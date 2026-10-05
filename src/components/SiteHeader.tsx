@@ -8,7 +8,7 @@ export function SiteHeader() {
           pdf<span className="text-primary">forge</span>
         </Link>
         <nav className="hidden gap-6 text-sm font-medium md:flex">
-          {[["merge", "Merge"], ["split", "Split"], ["compress", "Compress"], ["edit", "Edit"], ["protect", "Lock"], ["unlock", "Unlock"]].map(([id, l]) => (
+          {([["merge", "Merge"], ["split", "Split"], ["compress", "Compress"], ["edit", "Edit"], ["protect", "Lock"], ["unlock", "Unlock"]] as const).map(([id, l]) => (
             <Link key={id} to="/tool/$id" params={{ id }} className="hover:text-primary" activeProps={{ className: "text-primary" }}>
               {l}
             </Link>

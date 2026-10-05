@@ -46,13 +46,13 @@ function ToolPage() {
     setOuts([]);
   };
   const move = (i: number, d: number) =>
-    setFiles((p) => { const a = [...p]; const j = i + d; if (j < 0 || j >= a.length) return a; [a[i], a[j]] = [a[j], a[i]]; return a; });
+    setFiles((p) => { const a = [...p]; const j = i + d; if (j < 0 || j >= a.length) return a; [a[i], a[j]] = [a[j]!, a[i]!]; return a; });
 
   async function run() {
     setBusy(true); setErr(""); setOuts([]);
     try {
       const ops = await import("@/lib/pdf-ops");
-      const f = files[0];
+      const f = files[0]!;
       let r: Out[] = [];
       switch (tool.id) {
         case "merge": r = await ops.merge(files); break;
@@ -205,7 +205,7 @@ function SignaturePad({ cref }: { cref: React.RefObject<HTMLCanvasElement | null
   const drawing = useRef(false);
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
-    return [((e.clientX - r.left) / r.width) * 600, ((e.clientY - r.top) / r.height) * 200];
+    return [((e.clientX - r.left) / r.width) * 600, ((e.clientY - r.top) / r.height) * 200] as const;
   };
   return (
     <div>

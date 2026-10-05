@@ -18,7 +18,8 @@ async function pdfjs() {
 export function parseRanges(s: string, max: number): number[] {
   const out: number[] = [];
   for (const part of s.split(",").map((x) => x.trim()).filter(Boolean)) {
-    const [a, b] = part.split("-").map((n) => parseInt(n, 10));
+    const nums = part.split("-").map((n) => parseInt(n, 10));
+    const a = nums[0] ?? NaN; const b = nums[1] ?? NaN;
     const end = isNaN(b) ? a : b;
     for (let i = a; i <= end; i++) if (i >= 1 && i <= max) out.push(i - 1);
   }
