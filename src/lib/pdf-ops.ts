@@ -107,7 +107,7 @@ async function renderPages(f: File, password?: string, scale = 2) {
     const vp = page.getViewport({ scale });
     const c = document.createElement("canvas");
     c.width = vp.width; c.height = vp.height;
-    await page.render({ canvas: c, canvasContext: c.getContext("2d")!, viewport: vp }).promise;
+    await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
     canvases.push(c);
   }
   return canvases;
