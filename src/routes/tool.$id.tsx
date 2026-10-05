@@ -215,6 +215,7 @@ function ToolPage() {
           </div>
         )}
 
+        <p className="mt-4 text-center text-xs text-muted-foreground">🛡 No sign up needed · Your file stays on your device and is never saved on our servers</p>
         {err && <p className="mt-4 rounded-lg bg-accent p-3 text-sm text-accent-foreground">{err}</p>}
         {outs.length > 0 && (
           <div className="mt-6 rounded-2xl border bg-card p-6">
