@@ -183,7 +183,8 @@ export async function unlock(f: File, password: string): Promise<Out[]> {
   let cs: HTMLCanvasElement[];
   try {
     cs = await renderPages(f, password);
-  } catch {
+  } catch (e) {
+    console.error(e);
     throw new Error("Wrong password, or this file can't be opened.");
   }
   const doc = await PDFDocument.create();
