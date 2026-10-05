@@ -1,0 +1,3 @@
+- [x] SEO sitemap
+- [x] More PDF tools
+- [x] Trust highlights (no signup, free, fast, private)

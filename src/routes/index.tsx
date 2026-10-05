@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { TOOLS } from "@/lib/tools";
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "pdfforge — Every PDF tool you need, free" },
@@ -32,6 +33,11 @@ function Index() {
         <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
           Merge, split, compress, edit, sign, lock and unlock — free, fast, and private. Your files are processed in your browser and never uploaded.
         </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2 text-sm font-medium">
+          {["No sign up", "Free forever", "Fast", "Files never stored"].map((b) => (
+            <span key={b} className="rounded-full bg-accent px-3 py-1 text-accent-foreground">✓ {b}</span>
+          ))}
+        </div>
       </section>
       <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-2 px-6">
         {CATS.map((c) => (
@@ -50,6 +56,25 @@ function Index() {
           </Link>
         ))}
       </main>
+      <section className="border-t bg-card">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <h2 className="text-center text-3xl font-extrabold">Why people use pdfforge</h2>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["🙅", "No sign up, no login", "Open a tool and start working. No account, no email needed."],
+              ["🎁", "100% free", "Every tool is free to use, with no limits or watermarks."],
+              ["⚡", "Fast", "Files are processed right on your device — no waiting for uploads."],
+              ["🛡", "Private by design", "Your files and information are never sent to or saved on our servers."],
+            ].map(([i, t, d]) => (
+              <div key={t} className="rounded-xl border bg-background p-6">
+                <div className="text-3xl">{i}</div>
+                <h3 className="mt-3 text-lg font-bold">{t}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
         © 2026 pdfforge · 100% in-browser processing
       </footer>
