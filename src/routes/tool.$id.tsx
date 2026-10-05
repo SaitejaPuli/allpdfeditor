@@ -5,6 +5,7 @@ import { getTool } from "@/lib/tools";
 import type { Out } from "@/lib/pdf-ops";
 
 export const Route = createFileRoute("/tool/$id")({
+  staticData: { sitemap: true },
   loader: ({ params }) => {
     const tool = getTool(params.id);
     if (!tool) throw notFound();

@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { TOOLS } from "@/lib/tools";
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "pdfforge — Every PDF tool you need, free" },
