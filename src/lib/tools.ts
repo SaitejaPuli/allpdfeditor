@@ -1,7 +1,7 @@
 export type ToolId =
   | "merge" | "split" | "compress" | "rotate" | "remove-pages" | "organize"
   | "jpg-to-pdf" | "pdf-to-jpg" | "watermark" | "page-numbers" | "edit"
-  | "protect" | "unlock" | "sign";
+  | "protect" | "unlock" | "sign" | "grayscale" | "pdf-to-text" | "add-image" | "header-footer" | "metadata" | "reverse" | "crop" | "pdf-to-png";
 
 export type Tool = {
   id: ToolId;
@@ -28,6 +28,14 @@ export const TOOLS: Tool[] = [
   { id: "sign", name: "Sign PDF", desc: "Draw your signature and place it on a page.", icon: "✍", category: "Edit", accept: "application/pdf" },
   { id: "protect", name: "Lock PDF", desc: "Protect a PDF with a password.", icon: "🔒", category: "Security", accept: "application/pdf" },
   { id: "unlock", name: "Unlock PDF", desc: "Remove the password from a PDF you can open.", icon: "🔓", category: "Security", accept: "application/pdf" },
+  { id: "grayscale", name: "Grayscale PDF", desc: "Convert every page to black and white.", icon: "◐", category: "Optimize", accept: "application/pdf" },
+  { id: "pdf-to-text", name: "PDF to Text", desc: "Extract all the text from a PDF into a .txt file.", icon: "¶", category: "Convert", accept: "application/pdf" },
+  { id: "pdf-to-png", name: "PDF to PNG", desc: "Export each page as a crisp PNG image.", icon: "▤", category: "Convert", accept: "application/pdf" },
+  { id: "add-image", name: "Add Image", desc: "Place a logo or stamp image on a page.", icon: "▧", category: "Edit", accept: "application/pdf" },
+  { id: "header-footer", name: "Header & Footer", desc: "Add header and footer text to every page.", icon: "≡", category: "Edit", accept: "application/pdf" },
+  { id: "metadata", name: "Edit Metadata", desc: "Change the title, author and subject of a PDF.", icon: "ⓘ", category: "Edit", accept: "application/pdf" },
+  { id: "reverse", name: "Reverse Pages", desc: "Flip the page order, last page first.", icon: "⇅", category: "Organize", accept: "application/pdf" },
+  { id: "crop", name: "Crop PDF", desc: "Trim margins evenly from every page.", icon: "⌗", category: "Edit", accept: "application/pdf" },
 ];
 
 export const getTool = (id: string) => TOOLS.find((t) => t.id === id);

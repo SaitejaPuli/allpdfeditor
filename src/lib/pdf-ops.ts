@@ -98,7 +98,7 @@ export async function imagesToPdf(files: File[]): Promise<Out[]> {
   return [{ name: "images.pdf", blob: pdfBlob(await doc.save()) }];
 }
 
-async function renderPages(f: File, password?: string, scale = 2) {
+async function renderPages(f: File, password?: string, scale = 2, gray = false) {
   const p = await pdfjs();
   const pdf = await p.getDocument({ data: new Uint8Array(await f.arrayBuffer()), password }).promise;
   const canvases: HTMLCanvasElement[] = [];
@@ -108,6 +108,7 @@ async function renderPages(f: File, password?: string, scale = 2) {
     const c = document.createElement("canvas");
     c.width = vp.width; c.height = vp.height;
     await page.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
+    if (gray) { const x = c.getContext("2d")!; x.filter = "grayscale(1)"; x.drawImage(c, 0, 0); }
     canvases.push(c);
   }
   return canvases;
@@ -194,4 +195,90 @@ export async function unlock(f: File, password: string): Promise<Out[]> {
     page.drawImage(img, { x: 0, y: 0, width: c.width / 2, height: c.height / 2 });
   }
   return [{ name: `${base(f)}-unlocked.pdf`, blob: pdfBlob(await doc.save()) }];
+}
+
+async function imagesDoc(cs: HTMLCanvasElement[]) {
+  const { PDFDocument } = await lib();
+  const doc = await PDFDocument.create();
+  for (const c of cs) {
+    const img = await doc.embedJpg(await (await toBlob(c)).arrayBuffer());
+    const page = doc.addPage([c.width / 2, c.height / 2]);
+    page.drawImage(img, { x: 0, y: 0, width: c.width / 2, height: c.height / 2 });
+  }
+  return doc.save();
+}
+
+export async function grayscale(f: File): Promise<Out[]> {
+  return [{ name: `${base(f)}-grayscale.pdf`, blob: pdfBlob(await imagesDoc(await renderPages(f, undefined, 2, true))) }];
+}
+
+export async function pdfToPng(f: File): Promise<Out[]> {
+  const cs = await renderPages(f);
+  return Promise.all(cs.map(async (c, i) => ({ name: `${base(f)}-${i + 1}.png`, blob: await new Promise<Blob>((r) => c.toBlob((b) => r(b!), "image/png")) })));
+}
+
+export async function pdfToText(f: File): Promise<Out[]> {
+  const p = await pdfjs();
+  const pdf = await p.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const tc = await (await pdf.getPage(i)).getTextContent();
+    text += `--- Page ${i} ---\n` + tc.items.map((it) => ("str" in it ? it.str + (it.hasEOL ? "\n" : " ") : "")).join("") + "\n\n";
+  }
+  return [{ name: `${base(f)}.txt`, blob: new Blob([text], { type: "text/plain" }) }];
+}
+
+export async function addImage(f: File, img: File, page: number, pos: string, scalePct: number): Promise<Out[]> {
+  const doc = await load(f);
+  const buf = await img.arrayBuffer();
+  const e = img.type === "image/png" ? await doc.embedPng(buf) : await doc.embedJpg(buf);
+  const pages = page === 0 ? doc.getPages() : [doc.getPage(Math.min(Math.max(page - 1, 0), doc.getPageCount() - 1))];
+  for (const p of pages) {
+    const w = (p.getWidth() * scalePct) / 100, h = (e.height / e.width) * w, m = 30;
+    const x = pos.includes("left") ? m : pos.includes("right") ? p.getWidth() - w - m : (p.getWidth() - w) / 2;
+    const y = pos.includes("top") ? p.getHeight() - h - m : pos.includes("bottom") ? m : (p.getHeight() - h) / 2;
+    p.drawImage(e, { x, y, width: w, height: h });
+  }
+  return [{ name: `${base(f)}-stamped.pdf`, blob: pdfBlob(await doc.save()) }];
+}
+
+export async function headerFooter(f: File, header: string, footer: string): Promise<Out[]> {
+  const { StandardFonts, rgb } = await lib();
+  const doc = await load(f);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  for (const p of doc.getPages()) {
+    const { width, height } = p.getSize();
+    if (header) p.drawText(header, { x: (width - font.widthOfTextAtSize(header, 10)) / 2, y: height - 25, size: 10, font, color: rgb(0.3, 0.3, 0.3) });
+    if (footer) p.drawText(footer, { x: (width - font.widthOfTextAtSize(footer, 10)) / 2, y: 15, size: 10, font, color: rgb(0.3, 0.3, 0.3) });
+  }
+  return [{ name: `${base(f)}-header-footer.pdf`, blob: pdfBlob(await doc.save()) }];
+}
+
+export async function setMetadata(f: File, m: { title: string; author: string; subject: string; keywords: string }): Promise<Out[]> {
+  const doc = await load(f);
+  if (m.title) doc.setTitle(m.title);
+  if (m.author) doc.setAuthor(m.author);
+  if (m.subject) doc.setSubject(m.subject);
+  if (m.keywords) doc.setKeywords(m.keywords.split(",").map((k) => k.trim()));
+  return [{ name: `${base(f)}.pdf`, blob: pdfBlob(await doc.save()) }];
+}
+
+export async function reverse(f: File): Promise<Out[]> {
+  const n = (await load(f)).getPageCount();
+  return [await pick(f, [...Array(n).keys()].reverse(), `${base(f)}-reversed.pdf`)];
+}
+
+export async function crop(f: File, pct: number): Promise<Out[]> {
+  const doc = await load(f);
+  for (const p of doc.getPages()) {
+    const { width, height } = p.getSize();
+    const dx = (width * pct) / 100, dy = (height * pct) / 100;
+    p.setCropBox(dx, dy, width - 2 * dx, height - 2 * dy);
+  }
+  return [{ name: `${base(f)}-cropped.pdf`, blob: pdfBlob(await doc.save()) }];
+}
+
+export async function readMetadata(f: File) {
+  const doc = await load(f);
+  return { title: doc.getTitle() ?? "", author: doc.getAuthor() ?? "", subject: doc.getSubject() ?? "", keywords: doc.getKeywords() ?? "" };
 }

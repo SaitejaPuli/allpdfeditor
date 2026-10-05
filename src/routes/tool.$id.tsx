@@ -35,7 +35,8 @@ function ToolPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [drag, setDrag] = useState(false);
-  const [o, setO] = useState({ ranges: "1-2", every: false, deg: 90, text: "", password: "", page: 1, x: 10, y: 10, size: 16 });
+  const [o, setO] = useState({ ranges: "1-2", every: false, deg: 90, text: "", password: "", page: 1, x: 10, y: 10, size: 16, header: "", footer: "", pos: "bottom-right", scale: 25, crop: 5, title: "", author: "", subject: "", keywords: "" });
+  const [img, setImg] = useState<File | null>(null);
   const sigRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => { setFiles([]); setOuts([]); setErr(""); }, [tool.id]);
@@ -45,6 +46,7 @@ function ToolPage() {
     const arr = Array.from(list);
     setFiles((p) => (tool.multiple ? [...p, ...arr] : arr.slice(0, 1)));
     setOuts([]);
+    if (tool.id === "metadata" && arr[0]) import("@/lib/pdf-ops").then((m) => m.readMetadata(arr[0]!)).then((md) => setO((p) => ({ ...p, ...md }))).catch(() => {});
   };
   const move = (i: number, d: number) =>
     setFiles((p) => { const a = [...p]; const j = i + d; if (j < 0 || j >= a.length) return a; [a[i], a[j]] = [a[j]!, a[i]!]; return a; });
@@ -70,6 +72,14 @@ function ToolPage() {
         case "sign": r = await ops.sign(f, sigRef.current!.toDataURL("image/png"), o.page); break;
         case "protect": if (!o.password) throw new Error("Enter a password."); r = await ops.protect(f, o.password); break;
         case "unlock": r = await ops.unlock(f, o.password); break;
+        case "grayscale": r = await ops.grayscale(f); break;
+        case "pdf-to-text": r = await ops.pdfToText(f); break;
+        case "pdf-to-png": r = await ops.pdfToPng(f); break;
+        case "add-image": if (!img) throw new Error("Choose an image to add."); r = await ops.addImage(f, img, o.page, o.pos, o.scale); break;
+        case "header-footer": if (!o.header && !o.footer) throw new Error("Type a header or footer."); r = await ops.headerFooter(f, o.header, o.footer); break;
+        case "metadata": r = await ops.setMetadata(f, o); break;
+        case "reverse": r = await ops.reverse(f); break;
+        case "crop": r = await ops.crop(f, o.crop); break;
       }
       if (tool.id === "compress" && r[0]) {
         const pct = Math.round((1 - r[0].blob.size / f.size) * 100);
@@ -163,6 +173,36 @@ function ToolPage() {
               </div>
             )}
             {tool.id === "sign" && <SignaturePad cref={sigRef} />}
+            {tool.id === "add-image" && (
+              <div className="space-y-3">
+                <input type="file" accept="image/png,image/jpeg" className={input} onChange={(e) => setImg(e.target.files?.[0] ?? null)} />
+                <div className="grid grid-cols-3 gap-3">
+                  <Num label="Page (0 = all)" v={o.page} on={(v) => setO({ ...o, page: v })} />
+                  <Num label="Width % of page" v={o.scale} on={(v) => setO({ ...o, scale: v })} />
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Position</label>
+                    <select className={input} value={o.pos} onChange={(e) => setO({ ...o, pos: e.target.value })}>
+                      {["top-left", "top", "top-right", "center", "bottom-left", "bottom", "bottom-right"].map((p) => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+            {tool.id === "header-footer" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Txt label="Header" v={o.header} on={(v) => setO({ ...o, header: v })} />
+                <Txt label="Footer" v={o.footer} on={(v) => setO({ ...o, footer: v })} />
+              </div>
+            )}
+            {tool.id === "metadata" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Txt label="Title" v={o.title} on={(v) => setO({ ...o, title: v })} />
+                <Txt label="Author" v={o.author} on={(v) => setO({ ...o, author: v })} />
+                <Txt label="Subject" v={o.subject} on={(v) => setO({ ...o, subject: v })} />
+                <Txt label="Keywords (comma separated)" v={o.keywords} on={(v) => setO({ ...o, keywords: v })} />
+              </div>
+            )}
+            {tool.id === "crop" && <Num label="Trim from each edge (%)" v={o.crop} on={(v) => setO({ ...o, crop: Math.min(Math.max(v, 0), 40) })} />}
             {(tool.id === "protect" || tool.id === "unlock") && (
               <div>
                 <label className="text-sm font-medium">{tool.id === "protect" ? "Set a password" : "Current password (leave empty if none)"}</label>
@@ -198,6 +238,15 @@ function Num({ label, v, on }: { label: string; v: number; on: (v: number) => vo
     <div>
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <input type="number" className={input} value={v} onChange={(e) => on(Number(e.target.value))} />
+    </div>
+  );
+}
+
+function Txt({ label, v, on }: { label: string; v: string; on: (v: string) => void }) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <input className={input} value={v} onChange={(e) => on(e.target.value)} />
     </div>
   );
 }
