@@ -7,9 +7,9 @@ export const Route = createFileRoute("/")({
   staticData: { sitemap: true },
   head: () => ({
     meta: [
-      { title: "pdfforge — Every PDF tool you need, free" },
+      { title: "allpdfeditor — Every PDF tool you need, free" },
       { name: "description", content: "Merge, split, compress, edit, sign, lock and unlock PDFs right in your browser. Files never leave your device." },
-      { property: "og:title", content: "pdfforge — Every PDF tool you need" },
+      { property: "og:title", content: "allpdfeditor — Every PDF tool you need" },
       { property: "og:description", content: "Merge, split, compress, edit, sign, lock and unlock PDFs in your browser." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -58,7 +58,7 @@ function Index() {
       </main>
       <section className="border-t bg-card">
         <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-center text-3xl font-extrabold">Why people use pdfforge</h2>
+          <h2 className="text-center text-3xl font-extrabold">Why people use allpdfeditor</h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
               ["🙅", "No sign up, no login", "Open a tool and start working. No account, no email needed."],
