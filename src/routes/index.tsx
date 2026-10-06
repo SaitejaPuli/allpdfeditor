@@ -75,9 +75,6 @@ function Index() {
           </div>
         </div>
       </section>
-      <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        © 2026 allpdfeditor. All Rights Reserved.
-      </footer>
     </div>
   );
 }
