@@ -1,14 +1,18 @@
-# Welcome to your Lovable project
+# PDF Hub
+
+create a website for the PDF editor... include lock folder, unlock folder, edit pdf, etc.... add all latest features same as "ILOVEPDF" website.
 
 This project was built with [Lovable](https://lovable.dev).
 
+**Live app**: https://allpdfeditor.lovable.app
+
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/e53ccea6-1e00-4830-8f33-3db80e57b42f).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -20,10 +24,3 @@ cd <repository-name>
 npm i
 npm run dev
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
