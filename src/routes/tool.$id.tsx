@@ -13,7 +13,7 @@ export const Route = createFileRoute("/tool/$id")({
   },
   head: ({ loaderData }) => {
     const t = loaderData?.tool;
-    const title = t ? `${t.name} — pdfforge` : "Tool not found — pdfforge";
+    const title = t ? `${t.name} — allpdfeditor` : "Tool not found — allpdfeditor";
     const desc = t ? `${t.desc} Free and private, right in your browser.` : "";
     return {
       meta: [

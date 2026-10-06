@@ -80,8 +80,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "pdfforge" },
-      { name: "description", content: "Free online PDF tools" },
+      { title: "allpdfeditor — Free Online PDF Tools" },
+      { name: "description", content: "Free online PDF tools — merge, split, compress, edit, sign, lock and unlock PDFs right in your browser." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
