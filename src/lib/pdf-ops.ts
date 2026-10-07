@@ -8,7 +8,7 @@ async function lib() {
   return import("pdf-lib");
 }
 
-async function pdfjs() {
+export async function pdfjs() {
   const p = await import("pdfjs-dist");
   const w = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
   p.GlobalWorkerOptions.workerSrc = w.default;
@@ -98,7 +98,7 @@ export async function imagesToPdf(files: File[]): Promise<Out[]> {
   return [{ name: "images.pdf", blob: pdfBlob(await doc.save()) }];
 }
 
-async function renderPages(f: File, password?: string, scale = 2, gray = false) {
+export async function renderPages(f: File, password?: string, scale = 2, gray = false) {
   const p = await pdfjs();
   const pdf = await p.getDocument({ data: new Uint8Array(await f.arrayBuffer()), password }).promise;
   const canvases: HTMLCanvasElement[] = [];
@@ -197,7 +197,7 @@ export async function unlock(f: File, password: string): Promise<Out[]> {
   return [{ name: `${base(f)}-unlocked.pdf`, blob: pdfBlob(await doc.save()) }];
 }
 
-async function imagesDoc(cs: HTMLCanvasElement[]) {
+export async function imagesDoc(cs: HTMLCanvasElement[]) {
   const { PDFDocument } = await lib();
   const doc = await PDFDocument.create();
   for (const c of cs) {
