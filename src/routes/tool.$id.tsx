@@ -1,13 +1,19 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Capacitor } from "@capacitor/core";
-import { Directory, Filesystem } from "@capacitor/filesystem";
-import { Share } from "@capacitor/share";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getTool } from "@/lib/tools";
 import type { Out } from "@/lib/pdf-ops";
 import { useServerFn } from "@tanstack/react-start";
 import { pdfAi } from "@/lib/ai.functions";
+
+const DownloadFile = registerPlugin<{
+  save(options: {
+    fileName: string;
+    data: string;
+    mimeType: string;
+  }): Promise<{ uri: string }>;
+}>("DownloadFile");
 
 export const Route = createFileRoute("/tool/$id")({
   staticData: { sitemap: true },
@@ -160,18 +166,10 @@ function ToolPage() {
         reader.readAsDataURL(x.blob);
       });
 
-      const saved = await Filesystem.writeFile({
-        path: x.name,
+      await DownloadFile.save({
+        fileName: x.name,
         data: base64,
-        directory: Directory.Documents,
-        recursive: true,
-      });
-
-      await Share.share({
-        title: x.name,
-        text: "Your file is ready",
-        url: saved.uri,
-        dialogTitle: "Save or share your file",
+        mimeType: x.blob.type || "application/octet-stream",
       });
 
       return;
@@ -185,6 +183,7 @@ function ToolPage() {
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (error) {
     console.error("Download failed:", error);
+    setErr("Download failed. Please try again.");
   }
 };
 
