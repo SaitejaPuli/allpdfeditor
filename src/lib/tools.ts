@@ -1,14 +1,16 @@
 export type ToolId =
   | "merge" | "split" | "compress" | "rotate" | "remove-pages" | "organize"
   | "jpg-to-pdf" | "pdf-to-jpg" | "watermark" | "page-numbers" | "edit"
-  | "protect" | "unlock" | "sign" | "grayscale" | "pdf-to-text" | "add-image" | "header-footer" | "metadata" | "reverse" | "crop" | "pdf-to-png";
+  | "protect" | "unlock" | "sign" | "grayscale" | "pdf-to-text" | "add-image" | "header-footer" | "metadata" | "reverse" | "crop" | "pdf-to-png"
+  | "ai-summarize" | "ai-chat" | "ai-translate" | "word-to-pdf" | "excel-to-pdf" | "html-to-pdf" | "text-to-pdf" | "pdf-to-word" | "ocr"
+  | "highlight" | "redact" | "fill-form" | "flatten" | "extract-pages" | "insert-blank" | "compare" | "n-up";
 
 export type Tool = {
   id: ToolId;
   name: string;
   desc: string;
   icon: string;
-  category: "Organize" | "Optimize" | "Convert" | "Edit" | "Security";
+  category: "AI" | "Organize" | "Optimize" | "Convert" | "Edit" | "Security";
   accept: string;
   multiple?: boolean;
 };
@@ -36,6 +38,23 @@ export const TOOLS: Tool[] = [
   { id: "metadata", name: "Edit Metadata", desc: "Change the title, author and subject of a PDF.", icon: "ⓘ", category: "Edit", accept: "application/pdf" },
   { id: "reverse", name: "Reverse Pages", desc: "Flip the page order, last page first.", icon: "⇅", category: "Organize", accept: "application/pdf" },
   { id: "crop", name: "Crop PDF", desc: "Trim margins evenly from every page.", icon: "⌗", category: "Edit", accept: "application/pdf" },
+  { id: "ai-summarize", name: "AI Summarize PDF", desc: "Get a short summary and key points of any PDF in seconds.", icon: "✦", category: "AI", accept: "application/pdf" },
+  { id: "ai-chat", name: "Chat with PDF", desc: "Ask questions about your PDF and get instant answers.", icon: "💬", category: "AI", accept: "application/pdf" },
+  { id: "ai-translate", name: "AI Translate PDF", desc: "Translate the text of a PDF into another language.", icon: "🌐", category: "AI", accept: "application/pdf" },
+  { id: "word-to-pdf", name: "Word to PDF", desc: "Turn a Word document (.docx) into a PDF.", icon: "W", category: "Convert", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+  { id: "excel-to-pdf", name: "Excel to PDF", desc: "Turn spreadsheets (.xlsx, .xls, .csv) into a PDF.", icon: "X", category: "Convert", accept: ".xlsx,.xls,.csv" },
+  { id: "html-to-pdf", name: "HTML to PDF", desc: "Turn a saved web page (.html) into a PDF.", icon: "</>", category: "Convert", accept: ".html,.htm,text/html" },
+  { id: "text-to-pdf", name: "Text to PDF", desc: "Turn a plain .txt file into a clean PDF.", icon: "T", category: "Convert", accept: ".txt,text/plain" },
+  { id: "pdf-to-word", name: "PDF to Word", desc: "Turn a PDF into an editable Word document.", icon: "⇢W", category: "Convert", accept: "application/pdf" },
+  { id: "ocr", name: "OCR PDF", desc: "Read text from scanned PDFs and photos.", icon: "👁", category: "Convert", accept: "application/pdf,image/png,image/jpeg" },
+  { id: "highlight", name: "Highlight PDF", desc: "Highlight every place a word or phrase appears.", icon: "🖍", category: "Edit", accept: "application/pdf" },
+  { id: "redact", name: "Redact PDF", desc: "Permanently black out private words, names or numbers.", icon: "▮", category: "Security", accept: "application/pdf" },
+  { id: "fill-form", name: "Fill PDF Form", desc: "Type into the fields of a fillable PDF form.", icon: "☑", category: "Edit", accept: "application/pdf" },
+  { id: "flatten", name: "Flatten PDF", desc: "Lock form fields and annotations so they can't be changed.", icon: "▭", category: "Security", accept: "application/pdf" },
+  { id: "extract-pages", name: "Extract Pages", desc: "Save only the pages you pick into a new PDF.", icon: "⇱", category: "Organize", accept: "application/pdf" },
+  { id: "insert-blank", name: "Insert Blank Page", desc: "Add empty pages anywhere in your PDF.", icon: "▢", category: "Organize", accept: "application/pdf" },
+  { id: "compare", name: "Compare PDF", desc: "Find the text differences between two PDFs.", icon: "⇄", category: "Organize", accept: "application/pdf", multiple: true },
+  { id: "n-up", name: "N-up PDF", desc: "Print 2 or 4 pages on one sheet to save paper.", icon: "⊞", category: "Organize", accept: "application/pdf" },
 ];
 
 export const getTool = (id: string) => TOOLS.find((t) => t.id === id);
