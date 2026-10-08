@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">All PDF Editor</string>
+    <string name="title_activity_main">All PDF Editor</string>
+    <string name="package_name">com.saiteja.allpdfeditor</string>
+    <string name="custom_url_scheme">com.saiteja.allpdfeditor</string>
+</resources>

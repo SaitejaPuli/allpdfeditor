@@ -1,5 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getTool } from "@/lib/tools";
 import type { Out } from "@/lib/pdf-ops";
@@ -142,11 +145,48 @@ function ToolPage() {
     finally { setBusy(false); }
   }
 
-  const download = (x: Out) => {
+  const download = async (x: Out) => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1] ?? "");
+        };
+
+        reader.onerror = reject;
+        reader.readAsDataURL(x.blob);
+      });
+
+      const saved = await Filesystem.writeFile({
+        path: x.name,
+        data: base64,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+
+      await Share.share({
+        title: x.name,
+        text: "Your file is ready",
+        url: saved.uri,
+        dialogTitle: "Save or share your file",
+      });
+
+      return;
+    }
+
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(x.blob); a.download = x.name; a.click();
+    a.href = URL.createObjectURL(x.blob);
+    a.download = x.name;
+    a.click();
+
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  };
+  } catch (error) {
+    console.error("Download failed:", error);
+  }
+};
 
   return (
     <div className="min-h-screen">
