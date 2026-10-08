@@ -100,7 +100,7 @@ export async function pdfToWord(f: File): Promise<Out[]> {
   const children: InstanceType<typeof Paragraph>[] = [];
   text.split(/\[Page \d+\]\n/).filter((x) => x.trim()).forEach((pg, i) => {
     if (i > 0) children.push(new Paragraph({ children: [new PageBreak()] }));
-    for (const line of pg.split("\n")) if (line.trim()) children.push(new Paragraph({ text: line.trim(), heading: line.length < 60 && line === line.toUpperCase() && /[A-Z]/.test(line) ? HeadingLevel.HEADING_2 : undefined }));
+    for (const line of pg.split("\n")) if (line.trim()) children.push(new Paragraph(line.length < 60 && line === line.toUpperCase() && /[A-Z]/.test(line) ? { text: line.trim(), heading: HeadingLevel.HEADING_2 } : { text: line.trim() }));
   });
   if (!children.length) throw new Error("No text found. If this is a scanned PDF, try the OCR tool first.");
   const blob = await Packer.toBlob(new Document({ sections: [{ children }] }));
@@ -187,7 +187,7 @@ export async function fillForm(f: File, values: Record<string, string>, flatten:
     const v = values[fl.getName()]; if (v === undefined) continue;
     try {
       if ("setText" in fl) (fl as { setText: (s: string) => void }).setText(v);
-      else if ("check" in fl) v ? (fl as { check: () => void }).check() : (fl as { uncheck: () => void }).uncheck();
+      else if ("check" in fl) { const cb = fl as unknown as { check: () => void; uncheck: () => void }; if (v) cb.check(); else cb.uncheck(); }
       else if ("select" in fl && v) (fl as { select: (s: string) => void }).select(v);
     } catch { /* skip fields that can't be set */ }
   }
