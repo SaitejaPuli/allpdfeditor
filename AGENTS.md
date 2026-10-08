@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- AI tools extract PDF text in the browser and send only text to `pdfAi` server function (src/lib/ai.functions.ts); everything else stays client-side — keeps the "files never uploaded" promise true for non-AI tools.

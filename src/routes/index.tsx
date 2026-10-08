@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const CATS = ["All", "Organize", "Optimize", "Convert", "Edit", "Security"] as const;
+const CATS = ["All", "AI", "Organize", "Optimize", "Convert", "Edit", "Security"] as const;
 
 function Index() {
   const [cat, setCat] = useState<(typeof CATS)[number]>("All");

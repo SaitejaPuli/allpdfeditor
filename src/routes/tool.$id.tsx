@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getTool } from "@/lib/tools";
 import type { Out } from "@/lib/pdf-ops";
+import { useServerFn } from "@tanstack/react-start";
+import { pdfAi } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/tool/$id")({
   staticData: { sitemap: true },
@@ -38,14 +40,24 @@ function ToolPage() {
   const [o, setO] = useState({ ranges: "1-2", every: false, deg: 90, text: "", password: "", page: 1, x: 10, y: 10, size: 16, header: "", footer: "", pos: "bottom-right", scale: 25, crop: 5, title: "", author: "", subject: "", keywords: "" });
   const [img, setImg] = useState<File | null>(null);
   const sigRef = useRef<HTMLCanvasElement>(null);
+  const [x2, setX2] = useState({ lang: "Spanish", ocrLang: "eng", per: 2, after: 1, count: 1, flat: false, progress: "" });
+  const [fields, setFields] = useState<{ name: string; type: string; value: string; options: string[] }[]>([]);
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [aiText, setAiText] = useState("");
+  const [docText, setDocText] = useState("");
+  const [chat, setChat] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [q, setQ] = useState("");
+  const ai = useServerFn(pdfAi);
+  const isAi = tool.category === "AI";
 
-  useEffect(() => { setFiles([]); setOuts([]); setErr(""); }, [tool.id]);
+  useEffect(() => { setFiles([]); setOuts([]); setErr(""); setAiText(""); setChat([]); setDocText(""); setFields([]); }, [tool.id]);
 
   const add = (list: FileList | null) => {
     if (!list) return;
     const arr = Array.from(list);
     setFiles((p) => (tool.multiple ? [...p, ...arr] : arr.slice(0, 1)));
-    setOuts([]);
+    setOuts([]); setAiText(""); setChat([]); setDocText("");
+    if (tool.id === "fill-form" && arr[0]) import("@/lib/pdf-ops2").then((m) => m.readFields(arr[0]!)).then((fs) => { setFields(fs); setVals(Object.fromEntries(fs.map((x) => [x.name, x.value]))); if (!fs.length) setErr("This PDF has no fillable fields."); }).catch(() => setErr("Couldn't read this form."));
     if (tool.id === "metadata" && arr[0]) import("@/lib/pdf-ops").then((m) => m.readMetadata(arr[0]!)).then((md) => setO((p) => ({ ...p, ...md }))).catch(() => {});
   };
   const move = (i: number, d: number) =>
@@ -55,6 +67,7 @@ function ToolPage() {
     setBusy(true); setErr(""); setOuts([]);
     try {
       const ops = await import("@/lib/pdf-ops");
+      const op2 = await import("@/lib/pdf-ops2");
       const f = files[0]!;
       let r: Out[] = [];
       switch (tool.id) {
@@ -80,6 +93,32 @@ function ToolPage() {
         case "metadata": r = await ops.setMetadata(f, o); break;
         case "reverse": r = await ops.reverse(f); break;
         case "crop": r = await ops.crop(f, o.crop); break;
+        case "ai-summarize": case "ai-translate": case "ai-chat": {
+          const text = docText || await op2.extractText(f);
+          if (text.replace(/\[Page \d+\]/g, "").trim().length < 20) throw new Error("No readable text found. If this is a scanned PDF, run OCR PDF first.");
+          setDocText(text);
+          if (tool.id === "ai-chat") { setBusy(false); return; }
+          const res = await ai({ data: { mode: tool.id === "ai-summarize" ? "summarize" : "translate", text, language: x2.lang } });
+          if ("error" in res && res.error) throw new Error(res.error);
+          const out = "text" in res ? res.text ?? "" : "";
+          setAiText(out);
+          r = [{ name: `${f.name.replace(/\.pdf$/i, "")}-${tool.id === "ai-summarize" ? "summary" : x2.lang.toLowerCase()}.txt`, blob: new Blob([out], { type: "text/plain" }) }];
+          break;
+        }
+        case "word-to-pdf": r = await op2.wordToPdf(f); break;
+        case "excel-to-pdf": r = await op2.excelToPdf(f); break;
+        case "html-to-pdf": r = await op2.htmlToPdf(f); break;
+        case "text-to-pdf": r = await op2.textToPdf(f); break;
+        case "pdf-to-word": r = await op2.pdfToWord(f); break;
+        case "ocr": r = await op2.ocr(f, x2.ocrLang, (p) => setX2((s) => ({ ...s, progress: p }))); break;
+        case "highlight": if (!o.text) throw new Error("Type the words to highlight."); r = await op2.highlight(f, o.text); break;
+        case "redact": if (!o.text) throw new Error("Type the words to black out."); r = await op2.redact(f, o.text); break;
+        case "fill-form": r = await op2.fillForm(f, vals, x2.flat); break;
+        case "flatten": r = await op2.flatten(f); break;
+        case "extract-pages": r = await op2.extractPages(f, o.ranges); break;
+        case "insert-blank": r = await op2.insertBlank(f, x2.after, x2.count); break;
+        case "n-up": r = await op2.nUp(f, x2.per); break;
+        case "compare": if (files.length < 2) throw new Error("Add two PDFs to compare."); r = await op2.compare(files[0]!, files[1]!); break;
       }
       if (tool.id === "compress" && r[0]) {
         const pct = Math.round((1 - r[0].blob.size / f.size) * 100);
@@ -88,7 +127,19 @@ function ToolPage() {
       setOuts(r);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong.");
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setX2((s) => ({ ...s, progress: "" })); }
+  }
+
+  async function ask() {
+    const question = q.trim(); if (!question || busy) return;
+    const next = [...chat, { role: "user" as const, content: question }];
+    setChat(next); setQ(""); setBusy(true); setErr("");
+    try {
+      const res = await ai({ data: { mode: "chat", text: docText, history: next } });
+      if ("error" in res && res.error) throw new Error(res.error);
+      setChat([...next, { role: "assistant", content: "text" in res ? res.text ?? "" : "" }]);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Something went wrong."); }
+    finally { setBusy(false); }
   }
 
   const download = (x: Out) => {
@@ -136,10 +187,10 @@ function ToolPage() {
 
         {files.length > 0 && (
           <div className="mt-6 space-y-4 rounded-2xl border bg-card p-6">
-            {["split", "remove-pages", "organize"].includes(tool.id) && (
+            {["split", "remove-pages", "organize", "extract-pages"].includes(tool.id) && (
               <div>
                 <label className="text-sm font-medium">
-                  {tool.id === "split" ? "Pages to extract" : tool.id === "remove-pages" ? "Pages to remove" : "New page order"} (e.g. 1-3,5)
+                  {tool.id === "split" ? "Pages to extract" : tool.id === "remove-pages" ? "Pages to remove" : tool.id === "extract-pages" ? "Pages to keep" : "New page order"} (e.g. 1-3,5)
                 </label>
                 <input className={input} value={o.ranges} onChange={(e) => setO({ ...o, ranges: e.target.value })} disabled={o.every} />
                 {tool.id === "split" && (
@@ -202,6 +253,58 @@ function ToolPage() {
                 <Txt label="Keywords (comma separated)" v={o.keywords} on={(v) => setO({ ...o, keywords: v })} />
               </div>
             )}
+            {(tool.id === "highlight" || tool.id === "redact") && (
+              <Txt label={tool.id === "highlight" ? "Words to highlight (separate with commas)" : "Words to black out (separate with commas)"} v={o.text} on={(v) => setO({ ...o, text: v })} />
+            )}
+            {tool.id === "redact" && <p className="text-xs text-muted-foreground">Redacted pages are saved as images so the hidden text can't be copied back.</p>}
+            {tool.id === "ai-translate" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Translate into</label>
+                <select className={input} value={x2.lang} onChange={(e) => setX2({ ...x2, lang: e.target.value })}>
+                  {["English", "Hindi", "Telugu", "Tamil", "Spanish", "French", "German", "Portuguese", "Arabic", "Chinese", "Japanese", "Korean", "Russian", "Italian", "Bengali", "Marathi"].map((l) => <option key={l}>{l}</option>)}
+                </select>
+              </div>
+            )}
+            {tool.id === "ocr" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Document language</label>
+                <select className={input} value={x2.ocrLang} onChange={(e) => setX2({ ...x2, ocrLang: e.target.value })}>
+                  {[["eng", "English"], ["hin", "Hindi"], ["tel", "Telugu"], ["tam", "Tamil"], ["spa", "Spanish"], ["fra", "French"], ["deu", "German"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            )}
+            {tool.id === "n-up" && (
+              <div className="flex gap-2">
+                {[2, 4].map((n) => <button key={n} onClick={() => setX2({ ...x2, per: n })} className={`rounded-lg border px-4 py-2 text-sm ${x2.per === n ? "border-primary bg-accent" : ""}`}>{n} pages per sheet</button>)}
+              </div>
+            )}
+            {tool.id === "insert-blank" && (
+              <div className="grid grid-cols-2 gap-3">
+                <Num label="Insert after page (0 = at start)" v={x2.after} on={(v) => setX2({ ...x2, after: v })} />
+                <Num label="How many blank pages" v={x2.count} on={(v) => setX2({ ...x2, count: v })} />
+              </div>
+            )}
+            {tool.id === "compare" && files.length < 2 && <p className="text-sm text-muted-foreground">Add a second PDF to compare.</p>}
+            {tool.id === "fill-form" && fields.length > 0 && (
+              <div className="space-y-3">
+                {fields.map((fl) => (
+                  <div key={fl.name}>
+                    <label className="text-xs font-medium text-muted-foreground">{fl.name}</label>
+                    {fl.type === "CheckBox" ? (
+                      <input type="checkbox" className="ml-2" checked={!!vals[fl.name]} onChange={(e) => setVals({ ...vals, [fl.name]: e.target.checked ? "yes" : "" })} />
+                    ) : fl.options.length ? (
+                      <select className={input} value={vals[fl.name] ?? ""} onChange={(e) => setVals({ ...vals, [fl.name]: e.target.value })}>
+                        <option value="">—</option>{fl.options.map((op) => <option key={op}>{op}</option>)}
+                      </select>
+                    ) : (
+                      <input className={input} value={vals[fl.name] ?? ""} onChange={(e) => setVals({ ...vals, [fl.name]: e.target.value })} />
+                    )}
+                  </div>
+                ))}
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={x2.flat} onChange={(e) => setX2({ ...x2, flat: e.target.checked })} /> Lock the answers so they can't be changed</label>
+              </div>
+            )}
+            {isAi && <p className="text-xs text-muted-foreground">✦ AI-powered: the text of your PDF is sent to our AI to create the answer. It is not stored.</p>}
             {tool.id === "crop" && <Num label="Trim from each edge (%)" v={o.crop} on={(v) => setO({ ...o, crop: Math.min(Math.max(v, 0), 40) })} />}
             {(tool.id === "protect" || tool.id === "unlock") && (
               <div>
@@ -210,13 +313,34 @@ function ToolPage() {
               </div>
             )}
             <button onClick={run} disabled={busy} className="w-full rounded-lg bg-primary py-3 font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
-              {busy ? "Working…" : tool.name}
+              {busy ? (x2.progress || "Working…") : tool.id === "ai-chat" ? (docText ? "Reload document" : "Start chatting") : tool.name}
             </button>
           </div>
         )}
 
         <p className="mt-4 text-center text-xs text-muted-foreground">🛡 No sign up needed · Your file stays on your device and is never saved on our servers</p>
         {err && <p className="mt-4 rounded-lg bg-accent p-3 text-sm text-accent-foreground">{err}</p>}
+        {aiText && (
+          <div className="mt-6 whitespace-pre-wrap rounded-2xl border bg-card p-6 text-sm leading-relaxed">
+            <h2 className="mb-3 text-xl font-bold">{tool.id === "ai-summarize" ? "Summary" : "Translation"}</h2>{aiText}
+          </div>
+        )}
+        {tool.id === "ai-chat" && docText && (
+          <div className="mt-6 rounded-2xl border bg-card p-6">
+            <h2 className="text-xl font-bold">Ask about {files[0]?.name}</h2>
+            <div className="mt-4 space-y-3">
+              {chat.length === 0 && <p className="text-sm text-muted-foreground">Try: "What is this document about?" or "List the key dates."</p>}
+              {chat.map((m, i) => (
+                <div key={i} className={`whitespace-pre-wrap rounded-lg px-4 py-3 text-sm ${m.role === "user" ? "ml-10 bg-primary text-primary-foreground" : "mr-10 bg-accent text-accent-foreground"}`}>{m.content}</div>
+              ))}
+              {busy && <div className="mr-10 rounded-lg bg-accent px-4 py-3 text-sm text-accent-foreground">Thinking…</div>}
+            </div>
+            <form className="mt-4 flex gap-2" onSubmit={(e) => { e.preventDefault(); ask(); }}>
+              <input className={input} placeholder="Ask a question…" value={q} onChange={(e) => setQ(e.target.value)} />
+              <button disabled={busy || !q.trim()} className="rounded-lg bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-50">Ask</button>
+            </form>
+          </div>
+        )}
         {outs.length > 0 && (
           <div className="mt-6 rounded-2xl border bg-card p-6">
             <h2 className="text-xl font-bold">Your files are ready</h2>
