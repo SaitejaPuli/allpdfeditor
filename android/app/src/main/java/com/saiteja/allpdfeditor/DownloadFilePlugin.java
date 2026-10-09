@@ -1,3 +1,4 @@
+
 package com.saiteja.allpdfeditor;
 
 import android.content.ContentResolver;
@@ -22,57 +23,86 @@ public class DownloadFilePlugin extends Plugin {
     public void save(PluginCall call) {
         String fileName = call.getString("fileName");
         String base64Data = call.getString("data");
-        String mimeType = call.getString("mimeType", "application/octet-stream");
+        String mimeType = call.getString(
+            "mimeType", "application/octet-stream"
+        );
 
         if (fileName == null || base64Data == null) {
             call.reject("File name or data is missing");
             return;
         }
 
+        Uri fileUri = null;
+
         try {
             byte[] fileBytes = Base64.getDecoder().decode(base64Data);
-
             ContentResolver resolver = getContext().getContentResolver();
 
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
-            values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+            String safeName = fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+            String baseName = safeName;
+            String extension = "";
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                values.put(MediaStore.Downloads.IS_PENDING, 1);
+            int dot = safeName.lastIndexOf('.');
+            if (dot > 0) {
+                baseName = safeName.substring(0, dot);
+                extension = safeName.substring(dot);
             }
 
-            Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
-            Uri fileUri = resolver.insert(collection, values);
+            for (int i = 0; i < 100; i++) {
+                String candidate = i == 0
+                    ? safeName
+                    : baseName + " (" + i + ")" + extension;
+
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.MediaColumns.DISPLAY_NAME, candidate);
+                values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+                }
+
+                fileUri = resolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+                );
+
+                if (fileUri != null) {
+                    break;
+                }
+            }
 
             if (fileUri == null) {
-                call.reject("Could not create file in Downloads");
+                call.reject("Could not create a unique file in Downloads");
                 return;
             }
 
-            try (OutputStream outputStream = resolver.openOutputStream(fileUri)) {
-                if (outputStream == null) {
-                    resolver.delete(fileUri, null, null);
-                    call.reject("Could not open Downloads file");
-                    return;
+            try (OutputStream stream = resolver.openOutputStream(fileUri)) {
+                if (stream == null) {
+                    throw new Exception("Could not open the output file");
                 }
-
-                outputStream.write(fileBytes);
-                outputStream.flush();
+                stream.write(fileBytes);
+                stream.flush();
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ContentValues updateValues = new ContentValues();
-                updateValues.put(MediaStore.Downloads.IS_PENDING, 0);
-                resolver.update(fileUri, updateValues, null, null);
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                resolver.update(fileUri, values, null, null);
             }
 
             JSObject result = new JSObject();
             result.put("uri", fileUri.toString());
-
+            result.put("fileName", safeName);
             call.resolve(result);
 
         } catch (Exception e) {
+            if (fileUri != null) {
+                try {
+                    getContext().getContentResolver().delete(
+                        fileUri, null, null
+                    );
+                } catch (Exception ignored) {
+                }
+            }
             call.reject("Download failed: " + e.getMessage());
         }
     }

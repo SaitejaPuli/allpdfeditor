@@ -44,6 +44,9 @@ function ToolPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [outs, setOuts] = useState<Out[]>([]);
   const [busy, setBusy] = useState(false);
+  const downloading = useRef(false);
+  const [downloadingName, setDownloadingName] = useState("");
+  const [downloadMessage, setDownloadMessage] = useState("");
   const [err, setErr] = useState("");
   const [drag, setDrag] = useState(false);
   const [o, setO] = useState({ ranges: "1-2", every: false, deg: 90, text: "", password: "", page: 1, x: 10, y: 10, size: 16, header: "", footer: "", pos: "bottom-right", scale: 25, crop: 5, title: "", author: "", subject: "", keywords: "" });
@@ -58,6 +61,11 @@ function ToolPage() {
   const [q, setQ] = useState("");
   const ai = useServerFn(pdfAi);
   const isAi = tool.category === "AI";
+  useEffect(() => {
+    if (!downloadMessage) return;
+    const timer = setTimeout(() => setDownloadMessage(""), 3000);
+    return () => clearTimeout(timer);
+  }, [downloadMessage]);
 
   useEffect(() => { setFiles([]); setOuts([]); setErr(""); setAiText(""); setChat([]); setDocText(""); setFields([]); }, [tool.id]);
 
@@ -152,44 +160,58 @@ function ToolPage() {
   }
 
   const download = async (x: Out) => {
-  try {
-    if (Capacitor.isNativePlatform()) {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
+    if (downloading.current) return;
 
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1] ?? "");
-        };
+    downloading.current = true;
+    setDownloadingName(x.name);
+    setDownloadMessage("Saving file…");
+    setErr("");
 
-        reader.onerror = reject;
-        reader.readAsDataURL(x.blob);
-      });
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1] ?? "");
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(x.blob);
+        });
 
-      await DownloadFile.save({
-        fileName: x.name,
-        data: base64,
-        mimeType: x.blob.type || "application/octet-stream",
-      });
+        await DownloadFile.save({
+          fileName: x.name,
+          data: base64,
+          mimeType: x.blob.type || "application/octet-stream",
+        });
+        setDownloadMessage("Download completed!");
+        return;
+      }
 
-      return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(x.blob);
+      a.download = x.name;
+      a.click();
+      setDownloadMessage("Download started!");
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (error) {
+      console.error("Download failed:", error);
+      setErr("Download failed. Please try again.");
+      setDownloadMessage("");
+    } finally {
+      downloading.current = false;
+      setDownloadingName("");
     }
-
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(x.blob);
-    a.download = x.name;
-    a.click();
-
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  } catch (error) {
-    console.error("Download failed:", error);
-    setErr("Download failed. Please try again.");
-  }
-};
+  };
 
   return (
     <div className="min-h-screen">
       <SiteHeader />
+      {downloadMessage && (
+        <div role="status" className="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-ink px-5 py-3 text-sm font-medium text-ink-foreground shadow-lg">
+          {downloadMessage}
+        </div>
+      )}
       <main className="mx-auto max-w-3xl px-6 py-12">
         <Link to="/" className="text-sm text-muted-foreground hover:text-primary">← All tools</Link>
         <div className="mt-4 text-center">
@@ -385,8 +407,8 @@ function ToolPage() {
             <h2 className="text-xl font-bold">Your files are ready</h2>
             <div className="mt-4 space-y-2">
               {outs.map((x, i) => (
-                <button key={i} onClick={() => download(x)} className="flex w-full items-center justify-between rounded-lg bg-ink px-4 py-3 text-sm text-ink-foreground hover:opacity-90">
-                  <span className="truncate">{x.name}</span><span>↓ {(x.blob.size / 1024).toFixed(0)} KB</span>
+                <button key={i} onClick={() => download(x)} disabled={downloadingName !== ""} className="flex w-full items-center justify-between rounded-lg bg-ink px-4 py-3 text-sm text-ink-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+                  <span className="truncate">{downloadingName === x.name ? "Saving…" : x.name}</span><span>↓ {(x.blob.size / 1024).toFixed(0)} KB</span>
                 </button>
               ))}
             </div>
